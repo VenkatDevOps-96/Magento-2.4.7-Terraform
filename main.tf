@@ -73,13 +73,13 @@ module "internal_nlb" {
   subnet_ids           = [module.vpc.private_subnet_ids[0]]
   asg_name             = module.app_asg.asg_name
   target_group_port    = 8080
-  target_group_protocol = "HTTP"
+  target_group_protocol = "TCP"
 }
 
 module "rds" {
   source             = "./modules/rds"
   vpc_id             = module.vpc.vpc_id
-  private_subnet_ids = [module.vpc.private_subnet_ids[0]]
+  private_subnet_ids = [module.vpc.private_subnet_ids[0], module.vpc.private_subnet_ids[1]]
   db_sg_id           = module.security_groups.rds_sg_id
 
   db_name     = "magentodb"
