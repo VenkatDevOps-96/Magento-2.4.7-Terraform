@@ -120,6 +120,7 @@ locals {
   })
 }
 
+resource "null_resource" "create_magento_ami" {
 provisioner "local-exec" {
   command = <<EOT
 #!/bin/bash
@@ -152,6 +153,7 @@ done
 
 echo "{\"ImageId\": \"$AMI_ID\"}" > ami_output.json
 EOT
+}
 }
 
 data "external" "ami_data" {
