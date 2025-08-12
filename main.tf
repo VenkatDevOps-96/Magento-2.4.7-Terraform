@@ -124,7 +124,7 @@ locals {
 resource "null_resource" "create_magento_ami" {
   provisioner "local-exec" {
     command = <<EOT
-      aws ec2 create-image --region us-east-1 --instance-id i-0112da961592de15c --name "magento-app-ami-${timestamp()}" --no-reboot > ami_output.json
+      aws ec2 create-image --region us-east-1 --instance-id i-0112da961592de15c --name "magento-app-ami-${replace(timestamp(), ":", "-")}" --no-reboot > ami_output.json
     EOT
   }
   triggers = {
@@ -137,7 +137,7 @@ data "external" "ami_data" {
   depends_on = [null_resource.create_magento_ami]
 
   program = ["bash", "-c", <<EOT
-jq -r '.ImageId' ami_output.json
+echo "{\"ImageId\": \"$(jq -r '.ImageId' ami_output.json)\"}"
 EOT
   ]
 }
