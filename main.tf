@@ -17,8 +17,8 @@ module "security_groups" {
 
 module "ec2_instances" {
   source               = "./modules/ec2_instances"
-  admin_ami_id         = "ami-035dd7fc60ed66665"
-  ami_id               = "ami-0a7d80731ae1b2435"  # Ubuntu 22.04 in us-east-1
+  admin_ami_id         = "ami-0112da961592de15c"
+  ami_id               = "ami-035dd7fc60ed66665"  # Ubuntu 22.04 in us-east-1
   key_name             = "magento-key"
   bastion_subnet_id    = module.vpc.public_subnet_ids[0]
   varnish_subnet_id    = module.vpc.public_subnet_ids[0]
@@ -36,8 +36,8 @@ module "app_launch_template" {
   key_name            = "magento-key"
   security_group_ids  = [module.security_groups.app_sg_id]  # Replace with your SG output
   volume_size         = 100
-  # user_data         = local.backup_user_data  # Optional
-  # iam_instance_profile = module.ec2_iam_role.instance_profile_name  # Optional
+  user_data         = local.backup_user_data  # Optional
+  iam_instance_profile = module.ec2_iam_role.instance_profile_name  # Optional
 }
 
 module "alb" {
@@ -109,9 +109,10 @@ module "ec2_iam_role" {
   s3_bucket_name = module.s3_backup.bucket_name
 }
 
-#locals {
-#  backup_user_data = templatefile("${path.module}/scripts/backup_userdata.sh.tpl", {
-#    s3_bucket_name = module.s3_backup.bucket_name
-#  })
-#}
+locals {
+  backup_user_data = templatefile("${path.module}/scripts/backup_userdata.sh.tpl", {
+    s3_bucket_name = module.s3_backup.bucket_name
+    TIMESTAMP      = timestamp()
+  })
+}
 

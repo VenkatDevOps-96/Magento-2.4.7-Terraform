@@ -60,7 +60,7 @@ resource "aws_lb_listener_rule" "admin" {
 
   condition {
     path_pattern {
-      values = ["*/admin"]
+      values = ["/admin*"]
     }
   }
 }
