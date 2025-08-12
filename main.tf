@@ -120,15 +120,40 @@ locals {
   })
 }
 
-
 resource "null_resource" "create_magento_ami" {
   provisioner "local-exec" {
     command = <<EOT
-      aws ec2 create-image --region us-east-1 --instance-id ${var.existing_instance_id} --name "magento-app-ami-${replace(timestamp(), ":", "-")}" --no-reboot > ami_output.json
-    EOT
+#!/bin/bash
+
+set -e
+
+# Create AMI
+AMI_ID=$(aws ec2 create-image \
+  --region us-east-1 \
+  --instance-id ${var.existing_instance_id} \
+  --name "magento-app-ami-${replace(timestamp(), ":", "-")}" \
+  --no-reboot \
+  --query 'ImageId' \
+  --output text)
+
+echo "Created AMI: $AMI_ID"
+
+# Wait for snapshots to complete
+SNAPSHOT_IDS=$(aws ec2 describe-images --image-ids "$AMI_ID" \
+  --query 'Images[0].BlockDeviceMappings[*].Ebs.SnapshotId' \
+  --output text)
+
+for SNAP_ID in $SNAPSHOT_IDS; do
+  echo "Waiting for snapshot $SNAP_ID to complete..."
+  aws ec2 wait snapshot-completed --snapshot-ids "$SNAP_ID"
+done
+
+echo "{\"ImageId\": \"$AMI_ID\"}" > ami_output.json
+EOT
+    interpreter = ["/bin/bash", "-c"]
   }
+
   triggers = {
-    # Forces recreation every time you run `terraform apply`
     always_run = timestamp()
   }
 }
