@@ -127,6 +127,8 @@ resource "null_resource" "create_magento_ami" {
 
 set -e
 
+REGION="us-east-1"
+
 # Create AMI
 AMI_ID=$(aws ec2 create-image \
   --region us-east-1 \

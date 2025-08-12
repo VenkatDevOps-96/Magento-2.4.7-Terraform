@@ -20,12 +20,6 @@ pipeline {
       }
     }
 
-    stage('Manual Approval') {
-      steps {
-        input message: 'Do you want to apply these changes?', ok: 'Yes, Apply'
-      }
-    }
-
     stage('Terraform Apply') {
       steps {
         withCredentials([usernamePassword(credentialsId: 'aws-creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
