@@ -151,6 +151,9 @@ for SNAP_ID in $SNAPSHOT_IDS; do
   aws ec2 wait snapshot-completed --snapshot-ids "$SNAP_ID" --region us-east-1
 done
 
+echo "Waiting for AMI $AMI_ID to become available..."
+aws ec2 wait image-available --image-ids "$AMI_ID" --region us-east-1
+
 echo "{\"ImageId\": \"$AMI_ID\"}" > ami_output.json
 EOT
 }
