@@ -34,7 +34,7 @@ module "app_launch_template" {
   source              = "./modules/launch_template"
   ami_id              = "ami-035dd7fc60ed66665"   # <- Replace with your custom Magento AMI
   key_name            = "magento-key"
-  security_group_ids  = [module.security_groups.app_sg_id]  # Replace with your SG output
+  security_group_ids  = [module.security_groups.app_sg_id, module.security_groups.varnish_sg_id]  # Replace with your SG output
   volume_size         = 100
   user_data         = local.backup_user_data  # Optional
   iam_instance_profile = module.ec2_iam_role.instance_profile_name  # Optional
