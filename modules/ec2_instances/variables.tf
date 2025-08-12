@@ -54,7 +54,7 @@ variable "admin_instance_type" {
 variable "varnish_volume_size" {
   description = "EBS volume size for varnish instance"
   type        = number
-  default     = 50
+  default     = 100
 }
 
 variable "admin_volume_size" {

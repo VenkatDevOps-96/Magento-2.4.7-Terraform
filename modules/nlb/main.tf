@@ -1,5 +1,11 @@
+resource "random_string" "suffix" {
+  length  = 6
+  upper   = false
+  special = false
+}
+
 resource "aws_lb" "internal_nlb" {
-  name               = "magento-internal-nlb"
+  name               = "magento-internal-nlb-${random_string.suffix.result}"
   internal           = true
   load_balancer_type = "network"
   subnets            = var.subnet_ids
@@ -31,4 +37,5 @@ resource "aws_lb_listener" "listener" {
     target_group_arn = aws_lb_target_group.asg_tg.arn
   }
 }
+
 
