@@ -27,6 +27,12 @@ variable "admin_ami_id" {
   description = "AMI ID to use for the admin EC2 instance"
   type        = string
 }
+
+variable "varnish_ami_id" {
+  description = "AMI ID to use for the varnish EC2 instance"
+  type = string
+}
+
 variable "bastion_instance_type" {
   description = "EC2 instance type for bastion"
   type        = string
@@ -48,7 +54,7 @@ variable "admin_instance_type" {
 variable "varnish_volume_size" {
   description = "EBS volume size for varnish instance"
   type        = number
-  default     = 100
+  default     = 50
 }
 
 variable "admin_volume_size" {

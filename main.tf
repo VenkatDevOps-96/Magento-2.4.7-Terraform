@@ -9,21 +9,22 @@ module "vpc" {
 }
 
 module "security_groups" {
-  source              = "./modules/security_groups"
-  name_prefix         = "magento"
-  vpc_id              = module.vpc.vpc_id
+  source               = "./modules/security_groups"
+  name_prefix          = "magento"
+  vpc_id               = module.vpc.vpc_id
   private_subnet_cidrs = ["10.0.3.0/24", "10.0.4.0/24"]
 }
 
 module "ec2_instances" {
-  source               = "./modules/ec2_instances"
-  admin_ami_id         = "ami-0112da961592de15c"
-  ami_id               = "ami-035dd7fc60ed66665"  # Ubuntu 22.04 in us-east-1
-  key_name             = "magento-key"
-  bastion_subnet_id    = module.vpc.public_subnet_ids[0]
-  varnish_subnet_id    = module.vpc.public_subnet_ids[0]
-  admin_subnet_id      = module.vpc.private_subnet_ids[0]
-  security_group_ids   = [
+  source            = "./modules/ec2_instances"
+  admin_ami_id      = data.external.ami_data.result["ImageId"]
+  varnish_ami_id    = data.external.ami_data.result["ImageId"]
+  ami_id            = "ami-035dd7fc60ed66665" # Ubuntu 22.04 in us-east-1
+  key_name          = "magento-key"
+  bastion_subnet_id = module.vpc.public_subnet_ids[0]
+  varnish_subnet_id = module.vpc.public_subnet_ids[0]
+  admin_subnet_id   = module.vpc.private_subnet_ids[0]
+  security_group_ids = [
     module.security_groups.bastion_sg_id,
     module.security_groups.varnish_sg_id,
     module.security_groups.app_sg_id,
@@ -31,13 +32,15 @@ module "ec2_instances" {
 }
 
 module "app_launch_template" {
-  source              = "./modules/launch_template"
-  ami_id              = "ami-035dd7fc60ed66665"   # <- Replace with your custom Magento AMI
-  key_name            = "magento-key"
-  security_group_ids  = [module.security_groups.app_sg_id, module.security_groups.varnish_sg_id]  # Replace with your SG output
-  volume_size         = 100
-  user_data         = local.backup_user_data  # Optional
-  iam_instance_profile = module.ec2_iam_role.instance_profile_name  # Optional
+  source               = "./modules/launch_template"
+  ami_id               = "ami-035dd7fc60ed66665" # <- Replace with your custom Magento AMI
+  key_name             = "magento-key"
+  security_group_ids   = [module.security_groups.app_sg_id, module.security_groups.varnish_sg_id] # Replace with your SG output
+  volume_size          = 100
+  user_data            = local.backup_user_data                    # Optional
+  iam_instance_profile = module.ec2_iam_role.instance_profile_name # Optional
+  efs_id               = module.efs.efs_id
+  aws_region           = "us-east-1"
 }
 
 module "alb" {
@@ -46,33 +49,33 @@ module "alb" {
   public_subnets        = [module.vpc.public_subnet_ids[0], module.vpc.public_subnet_ids[1]]
   alb_security_group_id = module.security_groups.alb_sg_id
 
-  varnish_target_ip     = module.ec2_instances.varnish_private_ip
-  admin_target_ip       = module.ec2_instances.admin_private_ip
+  varnish_target_ip = module.ec2_instances.varnish_private_ip
+  admin_target_ip   = module.ec2_instances.admin_private_ip
 }
 
 
 module "app_asg" {
-  source                   = "./modules/asg"
-  launch_template_id       = module.app_launch_template.launch_template_id
-  launch_template_version  = module.app_launch_template.launch_template_latest_version
-  subnet_ids               = [module.vpc.private_subnet_ids[0]]
+  source                  = "./modules/asg"
+  launch_template_id      = module.app_launch_template.launch_template_id
+  launch_template_version = module.app_launch_template.launch_template_latest_version
+  subnet_ids              = [module.vpc.private_subnet_ids[0]]
 
-  min_size                 = 1
-  max_size                 = 3
-  desired_capacity         = 2
+  min_size         = 1
+  max_size         = 3
+  desired_capacity = 2
 
   # Uncomment below if using ALB
   #target_group_arns      = [module.nlb.target_group_arn]
 
-  health_check_type        = "EC2" # Or "ELB" if attached to ALB
+  health_check_type = "EC2" # Or "ELB" if attached to ALB
 }
 
 module "internal_nlb" {
-  source               = "./modules/nlb"
-  vpc_id               = module.vpc.vpc_id
-  subnet_ids           = [module.vpc.private_subnet_ids[0]]
-  asg_name             = module.app_asg.asg_name
-  target_group_port    = 8080
+  source                = "./modules/nlb"
+  vpc_id                = module.vpc.vpc_id
+  subnet_ids            = [module.vpc.private_subnet_ids[0]]
+  asg_name              = module.app_asg.asg_name
+  target_group_port     = 8080
   target_group_protocol = "TCP"
 }
 
@@ -88,10 +91,10 @@ module "rds" {
 }
 
 module "efs" {
-  source              = "./modules/efs"
-  vpc_id              = module.vpc.vpc_id
-  private_subnet_ids  = [module.vpc.private_subnet_ids[0]]  # Add more if needed
-  app_sg_id           = module.security_groups.app_sg_id
+  source             = "./modules/efs"
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = [module.vpc.private_subnet_ids[0]] # Add more if needed
+  app_sg_id          = module.security_groups.app_sg_id
 }
 
 
@@ -112,7 +115,30 @@ module "ec2_iam_role" {
 locals {
   backup_user_data = templatefile("${path.module}/scripts/backup_userdata.sh.tpl", {
     s3_bucket_name = module.s3_backup.bucket_name
+    EFS_DNS_NAME   = module.efs.efs_dns_name
     TIMESTAMP      = timestamp()
   })
+}
+
+
+resource "null_resource" "create_magento_ami" {
+  provisioner "local-exec" {
+    command = <<EOT
+      aws ec2 create-image --instance-id i-0112da961592de15c --name "magento-app-ami-${timestamp()}" --no-reboot > ami_output.json
+    EOT
+  }
+  triggers = {
+    # Forces recreation every time you run `terraform apply`
+    always_run = timestamp()
+  }
+}
+
+data "external" "ami_data" {
+  depends_on = [null_resource.create_magento_ami]
+
+  program = ["bash", "-c", <<EOT
+jq -r '.ImageId' ami_output.json
+EOT
+  ]
 }
 

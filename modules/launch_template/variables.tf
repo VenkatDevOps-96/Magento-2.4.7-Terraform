@@ -37,3 +37,14 @@ variable "user_data" {
   default     = ""
 }
 
+variable "efs_id" {
+  description = "EFS File System ID"
+  type        = string
+  default     = ""
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}

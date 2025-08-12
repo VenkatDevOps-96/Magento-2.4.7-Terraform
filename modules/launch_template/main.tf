@@ -20,7 +20,10 @@ resource "aws_launch_template" "app_lt" {
     }
   }
 
-  user_data = var.user_data != "" ? base64encode(var.user_data) : null
+  user_data = var.user_data != "" ? base64encode(var.user_data) : base64encode(templatefile("${path.module}/efs_userdata.sh.tpl", {
+  efs_id     = var.efs_id
+  aws_region = var.aws_region
+ }))
 
   tag_specifications {
     resource_type = "instance"
